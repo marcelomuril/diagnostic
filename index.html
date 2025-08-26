@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Avaliação Diagnóstica 2025</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/recharts/umd/Recharts.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/babel-standalone@6/babel.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+    const { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } = Recharts;
+
+    const descritores = {
+      H01: { descricao: "Identificar informações explícitas em textos.", prejuizo: "Sem essa habilidade, o aluno terá dificuldade em compreender instruções básicas." },
+      H02: { descricao: "Inferir informações implícitas em textos.", prejuizo: "Compromete a compreensão crítica, dificultando leituras complexas." },
+      H03: { descricao: "Reconhecer a ideia principal de um texto.", prejuizo: "O aluno pode não entender o propósito central das leituras." },
+      H04: { descricao: "Relacionar informações de diferentes trechos do texto.", prejuizo: "Afeta a capacidade de síntese e integração de ideias." },
+      H05: { descricao: "Interpretar gráficos, tabelas e imagens.", prejuizo: "Dificulta a leitura de dados e resolução de problemas do cotidiano." },
+      H06: { descricao: "Usar regras ortográficas.", prejuizo: "Prejudica a clareza na escrita e a comunicação formal." },
+      H07: { descricao: "Aplicar regras gramaticais.", prejuizo: "Afeta a produção de textos corretos e formais." },
+      H08: { descricao: "Identificar gêneros textuais.", prejuizo: "Dificulta a adequação de linguagem a contextos distintos." },
+      H09: { descricao: "Resolver problemas matemáticos básicos.", prejuizo: "Afeta o desempenho em tarefas cotidianas que envolvem cálculos." },
+      H10: { descricao: "Resolver problemas de múltiplas etapas.", prejuizo: "Compromete a autonomia em situações que exigem raciocínio lógico." },
+      H11: { descricao: "Interpretar expressões algébricas.", prejuizo: "Dificulta o estudo de funções e progressões." },
+      H12: { descricao: "Resolver equações e inequações.", prejuizo: "Prejudica a continuidade em conteúdos de matemática do ensino médio." },
+      H13: { descricao: "Compreender conceitos de geometria.", prejuizo: "Afeta a interpretação de formas, medidas e espaço." },
+      H14: { descricao: "Interpretar dados estatísticos.", prejuizo: "Limita a leitura crítica de informações em pesquisas e notícias." },
+      H15: { descricao: "Resolver problemas de probabilidade.", prejuizo: "Afeta o raciocínio em situações de incerteza e previsão." },
+    };
+
+    function App() {
+      const [ano, setAno] = useState("");
+      const [alunos, setAlunos] = useState([]);
+      const [alunoSelecionado, setAlunoSelecionado] = useState("");
+      const [dadosAluno, setDadosAluno] = useState(null);
+
+      const carregarCSV = (path) => new Promise((resolve) => {
+        Papa.parse(path, {
+          header: true,
+          download: true,
+          complete: (results) => resolve(results.data)
+        });
+      });
+
+      useEffect(() => {
+        if (!ano) return;
+        (async () => {
+          const [port, mat] = ano === "9"
+            ? [await carregarCSV("port9.csv"), await carregarCSV("mat9.csv")]
+            : [await carregarCSV("port3.csv"), await carregarCSV("mat3.csv")];
+          const nomes = [...new Set(port.map(r => r.Estudante))];
+          setAlunos(nomes);
+        })();
+      }, [ano]);
+
+      useEffect(() => {
+        if (!alunoSelecionado || !ano) return;
+        (async () => {
+          const [port, mat] = ano === "9"
+            ? [await carregarCSV("port9.csv"), await carregarCSV("mat9.csv")]
+            : [await carregarCSV("port3.csv"), await carregarCSV("mat3.csv")];
+
+          const dadosPort = port.find(r => r.Estudante === alunoSelecionado);
+          const dadosMat = mat.find(r => r.Estudante === alunoSelecionado);
+          const habilidades = Object.keys(dadosPort).filter(k => k.startsWith("H"));
+
+          const grafico = habilidades.map(h => ({
+            habilidade: h,
+            Portugues: parseInt(dadosPort[h] || 0),
+            Matematica: parseInt(dadosMat[h] || 0)
+          }));
+
+          setDadosAluno({
+            grafico,
+            nivel: dadosPort["Níveis de Aprendizagem"]
+          });
+        })();
+      }, [alunoSelecionado, ano]);
+
+      return (
+        <div className="p-6">
+          <header className="text-center mb-6">
+            <h1 className="text-3xl font-bold text-blue-800">CCM SEBASTIÃO PARANÁ</h1>
+            <h2 className="text-xl text-gray-700">1º AVALIAÇÃO DIAGNÓSTICA 2025</h2>
+          </header>
+
+          <div className="flex justify-center gap-4 mb-6">
+            <select value={ano} onChange={(e) => setAno(e.target.value)} className="p-2 border rounded">
+              <option value="">Selecione o Ano</option>
+              <option value="9">9º Ano</option>
+              <option value="3">3ª Série</option>
+            </select>
+
+            {ano && (
+              <select value={alunoSelecionado} onChange={(e) => setAlunoSelecionado(e.target.value)} className="p-2 border rounded">
+                <option value="">Selecione o Aluno</option>
+                {alunos.map((a, i) => <option key={i} value={a}>{a}</option>)}
+              </select>
+            )}
+          </div>
+
+          {dadosAluno && (
+            <div className="bg-white p-6 rounded-2xl shadow">
+              <h3 className="text-lg font-semibold mb-2">Nível de Aprendizagem: {dadosAluno.nivel}</h3>
+              <ResponsiveContainer width="100%" height={400}>
+                <BarChart data={dadosAluno.grafico}>
+                  <XAxis dataKey="habilidade" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="Portugues" fill="#3b82f6" />
+                  <Bar dataKey="Matematica" fill="#ef4444" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {dadosAluno && (
+            <div className="mt-6 bg-white p-6 rounded-2xl shadow">
+              <h3 className="text-lg font-semibold mb-4">Descritores</h3>
+              <ul className="space-y-4">
+                {dadosAluno.grafico.map(d => (
+                  <li key={d.habilidade} className="border-b pb-2">
+                    <p className="font-bold">{d.habilidade} - {descritores[d.habilidade]?.descricao || "Descrição não cadastrada"}</p>
+                    <p className="text-sm text-gray-600">{descritores[d.habilidade]?.prejuizo || "Prejuízo não informado."}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
